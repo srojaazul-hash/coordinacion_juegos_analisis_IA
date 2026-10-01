@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade - Asignatura</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Mi Galería de Juegos</h1>
+        <p>Selecciona un juego para empezar a jugar</p>
+    </header>
+
+    <main class="grid-juegos">
+        <!-- Tarjeta de Juego 1 -->
+        <article class="tarjeta">
+            <h2>Snake Clásico</h2>
+            <p>El clásico juego de la serpiente.</p>
+            <a href="juegos/juego1/index.html" target="_blank" class="btn">Jugar en nueva pestaña</a>
+        </article>
+
+        <!-- Tarjeta de Juego 2 -->
+        <article class="tarjeta">
+            <h2>Tetris</h2>
+            <p>Encaja las piezas y haz líneas.</p>
+            <a href="juegos/juego2/index.html" target="_blank" class="btn">Jugar en nueva pestaña</a>
+        </article>
+        
+        <!-- Puedes añadir más artículos (tarjetas) copiando y pegando el bloque anterior -->
+    </main>
+</body>
+</html>
