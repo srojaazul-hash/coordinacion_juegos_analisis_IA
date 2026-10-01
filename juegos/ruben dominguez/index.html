@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frogger Arcade - Paso 3: El Río, Troncos y Flotación</title>
+  <!-- Google Fonts para estética arcade retro premium -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       VARIABLES Y TEMA VISUAL (DARK ARCADE)
+       ========================================================================== */
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(18, 24, 38, 0.88);
+      --card-border: #1e293b;
+      --accent-green: #22c55e;
+      --accent-green-glow: rgba(34, 197, 94, 0.35);
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      background-image: 
+        radial-gradient(circle at 50% 15%, rgba(6, 182, 212, 0.1) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.06) 0%, transparent 50%),
+        radial-gradient(circle at 20% 70%, rgba(239, 68, 68, 0.05) 0%, transparent 50%),
+        linear-gradient(to bottom, #090d16, #05070a);
+      color: var(--text-main);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       CONTENEDOR PRINCIPAL
+       ========================================================================== */
+    .game-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      max-width: 930px;
+      width: 100%;
+    }
+
+    /* Encabezado */
+    header {
+      text-align: center;
+    }
+
+    .retro-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      color: var(--accent-green);
+      text-shadow: 
+        0 0 10px var(--accent-green-glow),
+        0 0 20px var(--accent-green-glow),
+        2px 2px 0px #047857;
+      margin-bottom: 6px;
+    }
+
+    .step-badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      color: #67e8f9;
+    }
+
+    /* ==========================================================================
+       LAYOUT DEL JUEGO: CANVAS + PANEL DE ESTADO
+       ========================================================================== */
+    .main-stage {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      width: 100%;
+    }
+
+    /* Marco del Canvas tipo Arcade */
+    .canvas-container {
+      position: relative;
+      background: #020408;
+      padding: 12px;
+      border-radius: 18px;
+      border: 2px solid #1e293b;
+      box-shadow: 
+        0 20px 40px -15px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 0 30px rgba(6, 182, 212, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Canvas estricto de 400x500 según requerimientos */
+    #gameCanvas {
+      width: 400px;
+      height: 500px;
+      background-color: #090d16;
+      display: block;
+      border-radius: 8px;
+      image-rendering: pixelated;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+    }
+
+    /* ==========================================================================
+       PANEL LATERAL DE INFORMACIÓN Y CONTROLES
+       ========================================================================== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 330px;
+    }
+
+    .info-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .info-card h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Métricas de cuadrícula y estado */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .metric-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 9px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .metric-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-green);
+    }
+
+    .metric-value.danger {
+      color: var(--accent-red);
+    }
+
+    .metric-value.water {
+      color: var(--accent-blue);
+    }
+
+    .metric-value.info {
+      color: var(--accent-cyan);
+    }
+
+    /* Alerta visual de límite, choque o ahogamiento */
+    .status-alert {
+      margin-top: 10px;
+      font-size: 0.74rem;
+      text-align: center;
+      font-weight: 700;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .status-alert.warning {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fcd34d;
+    }
+
+    .status-alert.collision {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      animation: alertPulse 0.35s ease-in-out infinite alternate;
+    }
+
+    .status-alert.water-alert {
+      background: rgba(2, 132, 199, 0.25);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: #7dd3fc;
+      animation: alertPulse 0.35s ease-in-out infinite alternate;
+    }
+
+    .status-alert.win {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: #86efac;
+    }
+
+    @keyframes alertPulse {
+      from { transform: scale(0.98); opacity: 0.85; }
+      to { transform: scale(1.02); opacity: 1; }
+    }
+
+    /* Teclas visuales y controles */
+    .key-hint-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .key-hint-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .key-badge {
+      background: #1e293b;
+      border: 1px solid #334155;
+      box-shadow: 0 2px 0 #0f172a;
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.6rem;
+      color: #f1f5f9;
+    }
+
+    /* D-PAD virtual */
+    .dpad-container {
+      display: grid;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 5px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .dpad-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #0f172a;
+      transition: all 0.1s ease;
+      user-select: none;
+    }
+
+    .dpad-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #0f172a;
+      background: var(--accent-green);
+      color: #052e16;
+    }
+
+    .dpad-up    { grid-column: 2; grid-row: 1; }
+    .dpad-left  { grid-column: 1; grid-row: 2; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+    .dpad-down  { grid-column: 2; grid-row: 3; }
+
+    /* Barra de opciones */
+    .controls-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 8px 8px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-action.active {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: var(--accent-green);
+      color: #86efac;
+    }
+
+    footer {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    @media (max-width: 800px) {
+      .main-stage {
+        flex-direction: column;
+        align-items: center;
+      }
+      .sidebar {
+        width: 400px;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-wrapper">
+    <!-- Encabezado con información de fase -->
+    <header>
+      <h1 class="retro-title">FROGGER</h1>
+      <span class="step-badge">Paso 3: El Río, Troncos &amp; Flotación</span>
+    </header>
+
+    <div class="main-stage">
+      <!-- Contenedor del elemento Canvas -->
+      <div class="canvas-container">
+        <!-- Canvas exacto de 400x500 píxeles -->
+        <canvas id="gameCanvas" width="400" height="500"></canvas>
+      </div>
+
+      <!-- Panel de Diagnóstico, Métricas y Controles -->
+      <aside class="sidebar">
+        <!-- Tarjeta de Coordenadas y Estado -->
+        <div class="info-card">
+          <h3>📐 Telemetría y Estado</h3>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Posición (Col, Fila)</div>
+              <div class="metric-value" id="valGridPos">4, 11</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Píxeles (X, Y)</div>
+              <div class="metric-value" style="font-size:0.75rem" id="valPixels">160, 460</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Saltos Dados</div>
+              <div class="metric-value" id="valMoves">0</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Atropellos (Coches)</div>
+              <div class="metric-value danger" id="valCollisions">0</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Ahogamientos (Agua)</div>
+              <div class="metric-value water" id="valDrownings">0</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Superficie Actual</div>
+              <div class="metric-value info" style="font-size:0.72rem" id="valSurface">Acera</div>
+            </div>
+          </div>
+          <!-- Notificación contextual -->
+          <div class="status-alert" id="statusAlert">Salta sobre los troncos para cruzar el río</div>
+        </div>
+
+        <!-- Tarjeta de Controles y Atajos -->
+        <div class="info-card">
+          <h3>🎮 Controles del Teclado</h3>
+          <ul class="key-hint-list">
+            <li class="key-hint-item">
+              <span>Arriba (Up)</span>
+              <span class="key-badge">▲ / W</span>
+            </li>
+            <li class="key-hint-item">
+              <span>Abajo (Down)</span>
+              <span class="key-badge">▼ / S</span>
+            </li>
+            <li class="key-hint-item">
+              <span>Izquierda (Left)</span>
+              <span class="key-badge">◀ / A</span>
+            </li>
+            <li class="key-hint-item">
+              <span>Derecha (Right)</span>
+              <span class="key-badge">▶ / D</span>
+            </li>
+          </ul>
+
+          <!-- D-Pad Virtual -->
+          <div class="dpad-container">
+            <button class="dpad-btn dpad-up" id="btnUp" title="Mover Arriba" aria-label="Arriba">▲</button>
+            <button class="dpad-btn dpad-left" id="btnLeft" title="Mover Izquierda" aria-label="Izquierda">◀</button>
+            <button class="dpad-btn dpad-right" id="btnRight" title="Mover Derecha" aria-label="Derecha">▶</button>
+            <button class="dpad-btn dpad-down" id="btnDown" title="Mover Abajo" aria-label="Abajo">▼</button>
+          </div>
+
+          <!-- Opciones auxiliares -->
+          <div class="controls-row">
+            <button class="btn-action active" id="btnToggleGrid">
+              <span>🌐</span> Cuadrícula
+            </button>
+            <button class="btn-action" id="btnToggleSpeed" title="Cambiar velocidad">
+              <span id="speedIcon">⚖️</span> <span id="speedText">Medio</span>
+            </button>
+            <button class="btn-action" id="btnReset">
+              <span>🔄</span> Reiniciar
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Canvas 400×500 px • Río: Filas 2 a 6 • Carretera: Filas 7 a 11 • Fila 0-1: Meta
+    </footer>
+  </div>
+
+  <!-- ==========================================================================
+       LÓGICA JAVASCRIPT DEL JUEGO
+       ========================================================================== -->
+  <script>
+    /* ==========================================================================
+       1. CONSTANTES Y CONFIGURACIÓN DEL SISTEMA DE CUADRÍCULA (GRID SYSTEM)
+       ========================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const GRID_SIZE = 40; // 40x40 píxeles por celda
+    const COLS = Math.floor(canvas.width / GRID_SIZE); // 10 columnas
+    const TOP_OFFSET = canvas.height % GRID_SIZE;      // 20px de cabecera HUD arcade
+
+    /* ESTRUCTURA DEL MAPA: 12 filas de 40px (480px) + 20px cabecera = 500px:
+       - Filas 0 y 1: (y = 20 a 100) -> Zona Meta / Orilla superior segura
+       - Filas 2 a 6: (y = 100 a 300) -> ZONA DEL RÍO (Agua azul y troncos flotantes)
+       - Filas 7 a 11: (y = 300 a 500) -> ZONA DE CARRETERA (Asfalto y vehículos)
+         * Fila 11: (y = 460 a 500) -> Acera de partida inferior (salida segura)
+    */
+    const WATER_START_ROW = 2;
+    const WATER_END_ROW = 6;
+    const WATER_START_Y = TOP_OFFSET + WATER_START_ROW * GRID_SIZE; // 100 px
+    const WATER_HEIGHT = (WATER_END_ROW - WATER_START_ROW + 1) * GRID_SIZE; // 200 px
+    const WATER_END_Y = WATER_START_Y + WATER_HEIGHT; // 300 px
+
+    const ROAD_START_ROW = 7;
+    const ROAD_END_ROW = 11;
+    const ROAD_START_Y = TOP_OFFSET + ROAD_START_ROW * GRID_SIZE; // 300 px
+    const ROAD_HEIGHT = (ROAD_END_ROW - ROAD_START_ROW + 1) * GRID_SIZE; // 200 px
+
+    /* Posición inicial de la rana (abajo del todo, fila 11) */
+    const START_X = 4 * GRID_SIZE; // 160 px
+    const START_Y = canvas.height - GRID_SIZE; // 460 px
+
+    /* ==========================================================================
+       2. ESTADO DEL JUGADOR (LA RANA)
+       ========================================================================== */
+    const frog = {
+      x: START_X,
+      y: START_Y,
+      width: GRID_SIZE,   // 40 px
+      height: GRID_SIZE,  // 40 px
+      color: '#22c55e',   // Verde arcade
+      moveCount: 0,       // Contador de saltos realizados
+      collisions: 0,      // Muertes por atropello
+      drownings: 0,       // Muertes por agua / ahogamiento
+      isFlashing: false,  // Efecto visual al ser atropellado (rojo)
+      isWaterFlashing: false // Efecto visual al caer al agua (azul)
+    };
+
+    // Variables de control visual y diagnóstico
+    let showGridGuide = true;
+    let alertTimeout = null;
+    let currentSpeedMode = 'medio'; // 'medio' | 'lento' | 'rapido'
+
+    // Referencias a elementos del DOM
+    const valGridPos = document.getElementById('valGridPos');
+    const valPixels = document.getElementById('valPixels');
+    const valMoves = document.getElementById('valMoves');
+    const valCollisions = document.getElementById('valCollisions');
+    const valDrownings = document.getElementById('valDrownings');
+    const valSurface = document.getElementById('valSurface');
+    const statusAlert = document.getElementById('statusAlert');
+    const btnToggleGrid = document.getElementById('btnToggleGrid');
+    const btnToggleSpeed = document.getElementById('btnToggleSpeed');
+    const speedIcon = document.getElementById('speedIcon');
+    const speedText = document.getElementById('speedText');
+    const btnReset = document.getElementById('btnReset');
+
+    /* ==========================================================================
+       3. SISTEMA DE AUDIO SINTETIZADO (WEB AUDIO API)
+       ========================================================================== */
+    let audioCtx = null;
+
+    function playSound(type) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+
+        if (type === 'hop') {
+          // Salto discreto (tono ascendente corto)
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(380, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'bump') {
+          // Límite de pantalla alcanzado (tono grave corto)
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(80, now);
+          osc.frequency.linearRampToValueAtTime(45, now + 0.09);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'crash') {
+          // Impacto con vehículo (ruido descenderte con distorsión)
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.25);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'splash') {
+          // Caída al agua / ahogamiento (tono descendente con burbuja)
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(480, now);
+          osc.frequency.exponentialRampToValueAtTime(70, now + 0.3);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'win') {
+          // Meta alcanzada
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.1);
+          osc.frequency.setValueAtTime(659.25, now + 0.2);
+          osc.frequency.setValueAtTime(880, now + 0.3);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+      } catch (e) {
+        // En caso de restricciones del navegador
+      }
+    }
+
+    /* ==========================================================================
+       4. CLASE VEHÍCULO (CARRETERA)
+       ========================================================================== */
+    class Vehicle {
+      constructor(x, y, width, height, speed, color, type = 'car') {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.speed = speed;
+        this.color = color;
+        this.type = type;
+      }
+
+      update() {
+        this.x += this.speed;
+
+        const offscreenMargin = 50;
+        // Screen wrapping fluido
+        if (this.speed > 0 && this.x > canvas.width + offscreenMargin) {
+          this.x = -this.width - offscreenMargin;
+        } else if (this.speed < 0 && this.x + this.width < -offscreenMargin) {
+          this.x = canvas.width + offscreenMargin;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+
+        // Chasis del vehículo
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(this.x, this.y, this.width, this.height);
+
+        // Parabrisas
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        const winPadding = 3;
+        const winWidth = Math.max(7, Math.floor(this.width * 0.26));
+        const winHeight = this.height - winPadding * 2;
+
+        if (this.speed > 0) {
+          ctx.fillRect(this.x + this.width - winWidth - 6, this.y + winPadding, winWidth, winHeight);
+          // Faros
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(this.x + this.width - 2, this.y + 3, 2, 5);
+          ctx.fillRect(this.x + this.width - 2, this.y + this.height - 8, 2, 5);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(this.x, this.y + 3, 2, 4);
+          ctx.fillRect(this.x, this.y + this.height - 7, 2, 4);
+        } else {
+          ctx.fillRect(this.x + 6, this.y + winPadding, winWidth, winHeight);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(this.x, this.y + 3, 2, 5);
+          ctx.fillRect(this.x, this.y + this.height - 8, 2, 5);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(this.x + this.width - 2, this.y + 3, 2, 4);
+          ctx.fillRect(this.x + this.width - 2, this.y + this.height - 7, 2, 4);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       5. CLASE TRONCO (RÍO)
+       ========================================================================== */
+    /**
+     * Representa un tronco de madera flotante sobre el que la rana debe subirse para cruzar.
+     */
+    class Log {
+      /**
+       * @param {number} x - Posición X inicial
+       * @param {number} y - Posición Y (carril del río)
+       * @param {number} width - Longitud del tronco
+       * @param {number} height - Grosor del tronco
+       * @param {number} speed - Velocidad de la corriente (+ derecha, - izquierda)
+       */
+      constructor(x, y, width, height, speed) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.speed = speed;
+      }
+
+      update() {
+        this.x += this.speed;
+
+        const offscreenMargin = 60;
+        // Screen wrapping suave por los extremos del río
+        if (this.speed > 0 && this.x > canvas.width + offscreenMargin) {
+          this.x = -this.width - offscreenMargin;
+        } else if (this.speed < 0 && this.x + this.width < -offscreenMargin) {
+          this.x = canvas.width + offscreenMargin;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+
+        // 1. Cuerpo principal de madera oscura con bordes suavemente redondeados
+        ctx.fillStyle = '#653110';
+        ctx.beginPath();
+        ctx.roundRect(this.x, this.y, this.width, this.height, 5);
+        ctx.fill();
+
+        // 2. Interior de corteza con relieve
+        ctx.fillStyle = '#854d0e';
+        ctx.fillRect(this.x + 3, this.y + 3, this.width - 6, this.height - 6);
+
+        // 3. Vetas decorativas de madera
+        ctx.strokeStyle = '#a16207';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.y + 8);
+        ctx.lineTo(this.x + this.width - 14, this.y + 8);
+        ctx.moveTo(this.x + 18, this.y + this.height - 8);
+        ctx.lineTo(this.x + this.width - 20, this.y + this.height - 8);
+        ctx.stroke();
+
+        // 4. Extremos del tronco (anillos de corte transversal del árbol)
+        ctx.fillStyle = '#ca8a04';
+        ctx.beginPath();
+        ctx.arc(this.x + 5, this.y + this.height / 2, 3, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width - 5, this.y + this.height / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================================================
+       6. GENERACIÓN DE VEHÍCULOS Y TRONCOS
+       ========================================================================== */
+    const vehicles = [];
+    const logs = [];
+
+    // Inicializar vehículos en las 4 filas de la carretera (7 a 10)
+    function initVehicles(speedMultiplier = 1.0) {
+      vehicles.length = 0;
+      const vehicleHeight = 28;
+      const verticalPadding = (GRID_SIZE - vehicleHeight) / 2;
+
+      // Fila 7 (y = 305): 2 deportivos hacia la IZQUIERDA (-1.6)
+      const lane7Y = TOP_OFFSET + 7 * GRID_SIZE + verticalPadding;
+      vehicles.push(new Vehicle(40,  lane7Y, 44, vehicleHeight, -1.6 * speedMultiplier, '#ef4444', 'sports'));
+      vehicles.push(new Vehicle(240, lane7Y, 44, vehicleHeight, -1.6 * speedMultiplier, '#ef4444', 'sports'));
+
+      // Fila 8 (y = 345): 2 camiones hacia la DERECHA (+1.1)
+      const lane8Y = TOP_OFFSET + 8 * GRID_SIZE + verticalPadding;
+      vehicles.push(new Vehicle(30,  lane8Y, 64, vehicleHeight, 1.1 * speedMultiplier, '#06b6d4', 'truck'));
+      vehicles.push(new Vehicle(250, lane8Y, 64, vehicleHeight, 1.1 * speedMultiplier, '#06b6d4', 'truck'));
+
+      // Fila 9 (y = 385): 2 turismos hacia la IZQUIERDA (-1.35)
+      const lane9Y = TOP_OFFSET + 9 * GRID_SIZE + verticalPadding;
+      vehicles.push(new Vehicle(70,  lane9Y, 46, vehicleHeight, -1.35 * speedMultiplier, '#f59e0b', 'car'));
+      vehicles.push(new Vehicle(270, lane9Y, 46, vehicleHeight, -1.35 * speedMultiplier, '#f59e0b', 'car'));
+
+      // Fila 10 (y = 425): 2 coches hacia la DERECHA (+1.4)
+      const lane10Y = TOP_OFFSET + 10 * GRID_SIZE + verticalPadding;
+      vehicles.push(new Vehicle(50,  lane10Y, 44, vehicleHeight, 1.4 * speedMultiplier, '#a855f7', 'car'));
+      vehicles.push(new Vehicle(260, lane10Y, 44, vehicleHeight, 1.4 * speedMultiplier, '#a855f7', 'car'));
+    }
+
+    // Inicializar troncos en las 5 filas del río (2 a 6)
+    function initLogs(speedMultiplier = 1.0) {
+      logs.length = 0;
+      const logHeight = 30;
+      const verticalPadding = (GRID_SIZE - logHeight) / 2; // 5px centrado
+
+      // FILA 2 (y = 100 + 5 = 105): Troncos hacia la DERECHA (+1.2)
+      const lane2Y = TOP_OFFSET + 2 * GRID_SIZE + verticalPadding;
+      logs.push(new Log(30,  lane2Y, 90, logHeight, 1.2 * speedMultiplier));
+      logs.push(new Log(240, lane2Y, 90, logHeight, 1.2 * speedMultiplier));
+
+      // FILA 3 (y = 140 + 5 = 145): Troncos largos hacia la IZQUIERDA (-1.4)
+      const lane3Y = TOP_OFFSET + 3 * GRID_SIZE + verticalPadding;
+      logs.push(new Log(40,  lane3Y, 115, logHeight, -1.4 * speedMultiplier));
+      logs.push(new Log(260, lane3Y, 115, logHeight, -1.4 * speedMultiplier));
+
+      // FILA 4 (y = 180 + 5 = 185): Troncos más rápidos hacia la DERECHA (+1.7)
+      const lane4Y = TOP_OFFSET + 4 * GRID_SIZE + verticalPadding;
+      logs.push(new Log(50,  lane4Y, 78, logHeight, 1.7 * speedMultiplier));
+      logs.push(new Log(250, lane4Y, 78, logHeight, 1.7 * speedMultiplier));
+
+      // FILA 5 (y = 220 + 5 = 225): Troncos hacia la IZQUIERDA (-1.1)
+      const lane5Y = TOP_OFFSET + 5 * GRID_SIZE + verticalPadding;
+      logs.push(new Log(20,  lane5Y, 100, logHeight, -1.1 * speedMultiplier));
+      logs.push(new Log(230, lane5Y, 100, logHeight, -1.1 * speedMultiplier));
+
+      // FILA 6 (y = 260 + 5 = 265): Troncos hacia la DERECHA (+1.35)
+      const lane6Y = TOP_OFFSET + 6 * GRID_SIZE + verticalPadding;
+      logs.push(new Log(40,  lane6Y, 105, logHeight, 1.35 * speedMultiplier));
+      logs.push(new Log(250, lane6Y, 105, logHeight, 1.35 * speedMultiplier));
+    }
+
+    function initAllObstacles(multiplier = 1.0) {
+      initVehicles(multiplier);
+      initLogs(multiplier);
+    }
+
+    /* ==========================================================================
+       7. COLISIÓN AABB Y LÓGICA CRUCIAL DEL RÍO
+       ========================================================================== */
+    /**
+     * Detección estándar Axis-Aligned Bounding Box (AABB)
+     */
+    function checkAABBCollision(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
+    }
+
+    /**
+     * Comprueba colisiones con vehículos en la carretera.
+     */
+    function checkVehicleCollisions() {
+      // Solo evaluar colisiones si la rana está en zona de carretera (filas 7 a 10)
+      if (frog.y < ROAD_START_Y || frog.y >= START_Y) return;
+
+      const frogHitbox = {
+        x: frog.x + 5,
+        y: frog.y + 5,
+        width: frog.width - 10,
+        height: frog.height - 10
+      };
+
+      for (let i = 0; i < vehicles.length; i++) {
+        if (checkAABBCollision(frogHitbox, vehicles[i])) {
+          handleVehicleDeath();
+          break;
+        }
+      }
+    }
+
+    /**
+     * LÓGICA CRUCIAL DEL RÍO:
+     * - Si la rana está en una fila de agua (filas 2 a 6), DEBE estar superpuesta a un tronco.
+     * - Si toca el agua sin tronco: muere por ahogamiento y regresa al inicio.
+     * - Si está sobre un tronco: su posición X se actualiza con la velocidad del tronco (arrastre).
+     * - Si el arrastre saca a la rana de la pantalla: también muere.
+     */
+    function checkRiverLogic() {
+      // Comprobar si la rana está dentro de los límites verticales del río (filas 2 a 6)
+      if (frog.y >= WATER_START_Y && frog.y < WATER_END_Y) {
+        // Huella de apoyo de la rana para evaluar flotabilidad sobre el tronco
+        const frogFootprint = {
+          x: frog.x + 6,
+          y: frog.y + 6,
+          width: frog.width - 12,
+          height: frog.height - 12
+        };
+
+        let onLog = false;
+        let supportingLog = null;
+
+        // Evaluar si la rana intersecta con algún tronco
+        for (let i = 0; i < logs.length; i++) {
+          const log = logs[i];
+          if (checkAABBCollision(frogFootprint, log)) {
+            onLog = true;
+            supportingLog = log;
+            break;
+          }
+        }
+
+        if (onLog && supportingLog) {
+          // ¡A salvo sobre el tronco!
+          // Arrastre automático con la velocidad y dirección del tronco:
+          frog.x += supportingLog.speed;
+
+          // Si el arrastre saca a la rana del canvas por izquierda o derecha:
+          if (frog.x < 0 || frog.x + frog.width > canvas.width) {
+            handleWaterDeath('🌊 ¡La corriente te arrastró fuera de la pantalla!');
+          }
+        } else {
+          // ¡Agua sin tronco! Ahogamiento instantáneo
+          handleWaterDeath('💧 ¡Al agua! La rana se ha ahogado sin tronco.');
+        }
+      }
+    }
+
+    /**
+     * Muerte por atropello en la carretera
+     */
+    function handleVehicleDeath() {
+      frog.collisions++;
+      playSound('crash');
+      frog.x = START_X;
+      frog.y = START_Y;
+      frog.isFlashing = true;
+      setTimeout(() => { frog.isFlashing = false; }, 350);
+      showAlert('💥 ¡ATROPELLO! Vehículo impactó a la rana.', 'collision', 1800);
+      updateUI();
+    }
+
+    /**
+     * Muerte por agua / corriente en el río
+     */
+    function handleWaterDeath(reason) {
+      frog.drownings++;
+      playSound('splash');
+      frog.x = START_X;
+      frog.y = START_Y;
+      frog.isWaterFlashing = true;
+      setTimeout(() => { frog.isWaterFlashing = false; }, 400);
+      showAlert(reason, 'water-alert', 1800);
+      updateUI();
+    }
+
+    /* ==========================================================================
+       8. MOVIMIENTO DISCRETO Y LÍMITES
+       ========================================================================== */
+    function moveFrog(direction) {
+      let moved = false;
+      let blockedMsg = '';
+
+      switch (direction) {
+        case 'ArrowUp':
+          if (frog.y - GRID_SIZE >= 0) {
+            frog.y -= GRID_SIZE;
+            moved = true;
+          } else {
+            blockedMsg = '⛔ ¡Límite Superior Alcanzado!';
+          }
+          break;
+
+        case 'ArrowDown':
+          if (frog.y + GRID_SIZE + frog.height <= canvas.height) {
+            frog.y += GRID_SIZE;
+            moved = true;
+          } else {
+            blockedMsg = '⛔ ¡Límite Inferior Alcanzado!';
+          }
+          break;
+
+        case 'ArrowLeft':
+          if (frog.x - GRID_SIZE >= 0) {
+            frog.x -= GRID_SIZE;
+            moved = true;
+          } else {
+            blockedMsg = '⛔ ¡Límite Izquierdo Alcanzado!';
+          }
+          break;
+
+        case 'ArrowRight':
+          if (frog.x + GRID_SIZE + frog.width <= canvas.width) {
+            frog.x += GRID_SIZE;
+            moved = true;
+          } else {
+            blockedMsg = '⛔ ¡Límite Derecho Alcanzado!';
+          }
+          break;
+      }
+
+      if (moved) {
+        frog.moveCount++;
+        playSound('hop');
+
+        // Si salimos de una fila de agua hacia tierra firme (orilla superior o carretera),
+        // alineamos suavemente la posición X a la cuadrícula de 40px
+        const currentRow = Math.floor((frog.y - TOP_OFFSET) / GRID_SIZE);
+        if (currentRow < WATER_START_ROW || currentRow > WATER_END_ROW) {
+          frog.x = Math.max(0, Math.min(canvas.width - frog.width, Math.round(frog.x / GRID_SIZE) * GRID_SIZE));
+        }
+
+        // Comprobar si llegó a la orilla superior (Filas 0 o 1, ¡Meta!)
+        if (currentRow <= 1) {
+          playSound('win');
+          showAlert('🏆 ¡ENHORABUENA! ¡Cruzaste la carretera y el río!', 'win', 3000);
+        }
+      } else if (blockedMsg) {
+        playSound('bump');
+        showAlert(blockedMsg, 'warning', 1200);
+      }
+
+      updateUI();
+    }
+
+    function showAlert(msg, type = 'warning', duration = 1500) {
+      statusAlert.textContent = msg;
+      statusAlert.className = `status-alert ${type}`;
+      clearTimeout(alertTimeout);
+      alertTimeout = setTimeout(() => {
+        statusAlert.textContent = 'Salta sobre los troncos para cruzar el río';
+        statusAlert.className = 'status-alert';
+      }, duration);
+    }
+
+    function resetGame() {
+      frog.x = START_X;
+      frog.y = START_Y;
+      frog.moveCount = 0;
+      frog.collisions = 0;
+      frog.drownings = 0;
+      frog.isFlashing = false;
+      frog.isWaterFlashing = false;
+      initAllObstacles(1.0);
+      showAlert('Juego reiniciado a la posición inicial');
+      updateUI();
+    }
+
+    /* ==========================================================================
+       9. ESCUCHA DE TECLADO Y CONTROLES VIRTUALES
+       ========================================================================== */
+    window.addEventListener('keydown', (e) => {
+      let direction = null;
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'KeyW':
+        case 'w':
+        case 'W':
+          direction = 'ArrowUp';
+          break;
+
+        case 'ArrowDown':
+        case 'KeyS':
+        case 's':
+        case 'S':
+          direction = 'ArrowDown';
+          break;
+
+        case 'ArrowLeft':
+        case 'KeyA':
+        case 'a':
+        case 'A':
+          direction = 'ArrowLeft';
+          break;
+
+        case 'ArrowRight':
+        case 'KeyD':
+        case 'd':
+        case 'D':
+          direction = 'ArrowRight';
+          break;
+
+        case 'r':
+        case 'R':
+          resetGame();
+          return;
+      }
+
+      if (direction) {
+        e.preventDefault();
+        moveFrog(direction);
+      }
+    });
+
+    // D-PAD
+    document.getElementById('btnUp').addEventListener('click', () => moveFrog('ArrowUp'));
+    document.getElementById('btnDown').addEventListener('click', () => moveFrog('ArrowDown'));
+    document.getElementById('btnLeft').addEventListener('click', () => moveFrog('ArrowLeft'));
+    document.getElementById('btnRight').addEventListener('click', () => moveFrog('ArrowRight'));
+
+    // Botones de acción
+    btnToggleGrid.addEventListener('click', () => {
+      showGridGuide = !showGridGuide;
+      btnToggleGrid.classList.toggle('active', showGridGuide);
+    });
+
+    btnToggleSpeed.addEventListener('click', () => {
+      if (currentSpeedMode === 'medio') {
+        currentSpeedMode = 'lento';
+        speedIcon.textContent = '🐢';
+        speedText.textContent = 'Lento';
+        initAllObstacles(0.7);
+        showAlert('Velocidad ajustada a: Lento (Fácil)', 'warning', 1500);
+      } else if (currentSpeedMode === 'lento') {
+        currentSpeedMode = 'rapido';
+        speedIcon.textContent = '⚡';
+        speedText.textContent = 'Rápido';
+        initAllObstacles(1.35);
+        showAlert('Velocidad ajustada a: Rápido (Desafío)', 'warning', 1500);
+      } else {
+        currentSpeedMode = 'medio';
+        speedIcon.textContent = '⚖️';
+        speedText.textContent = 'Medio';
+        initAllObstacles(1.0);
+        showAlert('Velocidad ajustada a: Medio (Equilibrado)', 'warning', 1500);
+      }
+    });
+
+    btnReset.addEventListener('click', resetGame);
+
+    /* ==========================================================================
+       10. RENDERIZADO DEL MAPA (ORILLA SUPERIOR, RÍO, CARRETERA Y RANA)
+       ========================================================================== */
+    /**
+     * Dibuja la orilla superior y meta (Filas 0 y 1, de y = 20 a 100 px)
+     */
+    function drawGoalArea() {
+      ctx.save();
+      // Césped verde frondoso
+      ctx.fillStyle = '#14532d';
+      ctx.fillRect(0, TOP_OFFSET, canvas.width, GRID_SIZE * 2);
+
+      // Franja de césped decorativo claro
+      ctx.fillStyle = '#166534';
+      ctx.fillRect(0, TOP_OFFSET + GRID_SIZE, canvas.width, GRID_SIZE);
+
+      // Orilla del río superior (borde marrón / tierra)
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(0, WATER_START_Y - 3, canvas.width, 3);
+
+      ctx.restore();
+    }
+
+    /**
+     * Dibuja la zona del río (Filas 2 a 6, de y = 100 a 300 px) de color azul
+     */
+    function drawRiver() {
+      ctx.save();
+
+      // 1. Agua azul profunda del río
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(0, WATER_START_Y, canvas.width, WATER_HEIGHT);
+
+      // 2. Ondas y corrientes de agua retro en cada carril
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1.5;
+
+      const time = performance.now() * 0.002;
+      for (let row = WATER_START_ROW; row <= WATER_END_ROW; row++) {
+        const laneY = TOP_OFFSET + row * GRID_SIZE + 20;
+        ctx.beginPath();
+        for (let x = 0; x <= canvas.width; x += 30) {
+          const waveY = laneY + Math.sin(time + x * 0.05 + row) * 2;
+          if (x === 0) ctx.moveTo(x, waveY);
+          else ctx.lineTo(x, waveY);
+        }
+        ctx.stroke();
+      }
+
+      // 3. Orilla inferior del río (separa el agua del asfalto)
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(0, WATER_END_Y - 2, canvas.width, 3);
+
+      ctx.restore();
+    }
+
+    /**
+     * Dibuja la carretera (Filas 7 a 11, de y = 300 a 500 px)
+     */
+    function drawRoad() {
+      ctx.save();
+
+      // Asfalto gris oscuro
+      ctx.fillStyle = '#161c28';
+      ctx.fillRect(0, ROAD_START_Y, canvas.width, ROAD_HEIGHT);
+
+      // Líneas divisorias discontinuas de carril
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 12]);
+
+      for (let row = ROAD_START_ROW + 1; row <= ROAD_END_ROW; row++) {
+        const laneY = TOP_OFFSET + row * GRID_SIZE;
+        ctx.beginPath();
+        ctx.moveTo(0, laneY);
+        ctx.lineTo(canvas.width, laneY);
+        ctx.stroke();
+      }
+
+      // Fila 11: Acera inferior segura de partida
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
+      ctx.fillRect(0, START_Y, canvas.width, GRID_SIZE);
+
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0, START_Y);
+      ctx.lineTo(canvas.width, START_Y);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    /**
+     * Dibuja la cuadrícula auxiliar de 40x40 px
+     */
+    function drawGridGuide() {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+
+      // Líneas verticales
+      for (let x = 0; x <= canvas.width; x += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Líneas horizontales
+      for (let y = TOP_OFFSET; y <= canvas.height; y += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Cabecera superior arcade (20px)
+      if (TOP_OFFSET > 0) {
+        ctx.fillStyle = '#060913';
+        ctx.fillRect(0, 0, canvas.width, TOP_OFFSET);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '9px "Press Start 2P", monospace';
+        ctx.fillText('FROGGER ARCADE • RÍO & CARRETERA', 10, 14);
+      }
+
+      ctx.restore();
+    }
+
+    /**
+     * Dibuja a la rana con efectos de animación/estado
+     */
+    function drawFrog() {
+      ctx.save();
+
+      let frogColor = frog.color;
+      let glowColor = 'rgba(34, 197, 94, 0.4)';
+
+      if (frog.isFlashing) {
+        frogColor = '#ef4444'; // Rojo si fue atropellada
+        glowColor = 'rgba(239, 68, 68, 0.6)';
+      } else if (frog.isWaterFlashing) {
+        frogColor = '#38bdf8'; // Azul claro si cayó al agua
+        glowColor = 'rgba(56, 189, 248, 0.7)';
+      }
+
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 12;
+
+      // Cuadrado base de 40x40
+      ctx.fillStyle = frogColor;
+      ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
+
+      ctx.strokeStyle = frog.isFlashing ? '#fca5a5' : (frog.isWaterFlashing ? '#bae6fd' : '#86efac');
+      ctx.lineWidth = 2;
+      ctx.strokeRect(frog.x + 2, frog.y + 2, frog.width - 4, frog.height - 4);
+
+      // Ojos de la rana
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(frog.x + 6, frog.y + 6, 8, 8);
+      ctx.fillRect(frog.x + frog.width - 14, frog.y + 6, 8, 8);
+
+      ctx.fillStyle = '#052e16';
+      ctx.fillRect(frog.x + 8, frog.y + 8, 4, 4);
+      ctx.fillRect(frog.x + frog.width - 12, frog.y + 8, 4, 4);
+
+      ctx.restore();
+    }
+
+    /**
+     * Función principal de renderizado en cada fotograma
+     */
+    function draw() {
+      // 1. Limpiar pantalla
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Fondo base
+      ctx.fillStyle = '#0a0f1d';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 3. Zona Meta y Orilla superior (Filas 0-1)
+      drawGoalArea();
+
+      // 4. Zona del Río (Filas 2-6)
+      drawRiver();
+
+      // 5. Zona de Carretera (Filas 7-11)
+      drawRoad();
+
+      // 6. Guía de cuadrícula (si está activada)
+      if (showGridGuide) {
+        drawGridGuide();
+      }
+
+      // 7. Dibujar troncos en el agua
+      for (let i = 0; i < logs.length; i++) {
+        logs[i].draw(ctx);
+      }
+
+      // 8. Dibujar vehículos en la carretera
+      for (let i = 0; i < vehicles.length; i++) {
+        vehicles[i].draw(ctx);
+      }
+
+      // 9. Dibujar la rana sobre troncos/asfalto
+      drawFrog();
+    }
+
+    /* ==========================================================================
+       11. BUCLE PRINCIPAL DEL JUEGO (GAME LOOP)
+       ========================================================================== */
+    function gameLoop(timestamp) {
+      // 1. Actualizar vehículos
+      for (let i = 0; i < vehicles.length; i++) {
+        vehicles[i].update();
+      }
+
+      // 2. Actualizar troncos
+      for (let i = 0; i < logs.length; i++) {
+        logs[i].update();
+      }
+
+      // 3. Evaluar colisiones con vehículos (carretera)
+      checkVehicleCollisions();
+
+      // 4. LÓGICA CRUCIAL DEL RÍO: Supervivencia sobre troncos, arrastre y ahogamiento
+      checkRiverLogic();
+
+      // 5. Renderizado en el Canvas
+      draw();
+
+      // 6. Actualizar telemetría de superficie
+      updateSurfaceInfo();
+
+      // Siguiente cuadro
+      requestAnimationFrame(gameLoop);
+    }
+
+    /* ==========================================================================
+       12. ACTUALIZACIÓN DE TELEMETRÍA (UI)
+       ========================================================================== */
+    function updateUI() {
+      const currentCol = Math.floor(frog.x / GRID_SIZE);
+      const currentRow = Math.floor((frog.y - TOP_OFFSET) / GRID_SIZE);
+
+      valGridPos.textContent = `${currentCol}, ${currentRow}`;
+      valPixels.textContent = `${Math.round(frog.x)}, ${Math.round(frog.y)}`;
+      valMoves.textContent = frog.moveCount;
+      valCollisions.textContent = frog.collisions;
+      valDrownings.textContent = frog.drownings;
+    }
+
+    function updateSurfaceInfo() {
+      const currentRow = Math.floor((frog.y - TOP_OFFSET) / GRID_SIZE);
+      if (currentRow <= 1) {
+        valSurface.textContent = '🏆 Meta';
+        valSurface.style.color = 'var(--accent-green)';
+      } else if (currentRow >= WATER_START_ROW && currentRow <= WATER_END_ROW) {
+        valSurface.textContent = '🪵 Tronco (Río)';
+        valSurface.style.color = 'var(--accent-cyan)';
+      } else if (currentRow === 11) {
+        valSurface.textContent = '🚶 Acera Salida';
+        valSurface.style.color = 'var(--accent-green)';
+      } else {
+        valSurface.textContent = '🚗 Asfalto';
+        valSurface.style.color = 'var(--accent-amber)';
+      }
+      valPixels.textContent = `${Math.round(frog.x)}, ${Math.round(frog.y)}`;
+    }
+
+    // Inicializar mapa, obstáculos y arrancar bucle continuo a 60 FPS
+    initAllObstacles(1.0);
+    updateUI();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
